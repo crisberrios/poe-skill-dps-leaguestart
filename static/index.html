@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mirage League — Build Meta</title>
+  <style>
+    :root {
+      --bg: #0a0d12;
+      --bg-secondary: #121620;
+      --bg-tertiary: #1a1f2b;
+      --border: #2a3040;
+      --text: #c8d6e5;
+      --text-dim: #6c7a8d;
+      --accent: #af6025;
+      --accent-bright: #d4893a;
+      --green: #3e8e50;
+      --red: #8e3e3e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    .header {
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .header h1 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: #fff;
+    }
+
+    .header .subtitle {
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-left: 8px;
+    }
+
+    /* Filters indicator */
+    .filters-bar {
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 24px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .filters-bar .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+    }
+
+    .filters-bar .badge.warn {
+      border-color: var(--accent);
+      color: var(--accent-bright);
+    }
+
+    /* Main content */
+    .main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px 24px;
+    }
+
+    /* Skill selector */
+    .skill-selector {
+      margin-bottom: 20px;
+    }
+
+    .skill-selector label {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+      margin-bottom: 8px;
+    }
+
+    .skill-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .skill-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px 12px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: var(--bg-secondary);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 0.82rem;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+
+    .skill-chip:hover {
+      border-color: var(--accent);
+    }
+
+    .skill-chip.selected {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .skill-chip .count {
+      font-size: 0.7rem;
+      opacity: 0.7;
+    }
+
+    /* Chart */
+    .chart-container {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 24px;
+    }
+
+    canvas#dpsChart {
+      width: 100%;
+      height: 420px;
+    }
+
+    /* Table */
+    .table-container {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+
+    thead {
+      background: var(--bg-tertiary);
+    }
+
+    th {
+      padding: 10px 14px;
+      text-align: left;
+      font-weight: 500;
+      color: var(--text-dim);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    th:hover { color: var(--text); }
+    th.sorted { color: var(--accent-bright); }
+    th .arrow { font-size: 0.7rem; margin-left: 2px; }
+
+    td {
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tr:nth-child(even) { background: rgba(255,255,255,0.015); }
+
+    .trend-up { color: var(--green); }
+    .trend-down { color: var(--red); }
+    .trend-flat { color: var(--text-dim); }
+
+    /* Empty state */
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: var(--text-dim);
+    }
+
+    .empty-state p { margin-top: 8px; }
+    .empty-state code {
+      background: var(--bg-tertiary);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 0.85rem;
+    }
+
+    /* Error banner */
+    .error-banner {
+      background: var(--red);
+      color: #fff;
+      padding: 10px 24px;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .view-controls {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .control-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+
+    .control-label select {
+      background: var(--bg-secondary);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      cursor: pointer;
+    }
+
+    .control-label select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .error-banner.visible { display: block; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div>
+      <h1>Mirage League<span class="subtitle">— Build Meta Dashboard</span></h1>
+    </div>
+  </div>
+
+  <div class="filters-bar" id="filtersBar">
+    Loading filters...
+  </div>
+
+  <div class="error-banner" id="errorBanner"></div>
+
+  <div class="main">
+    <div class="view-controls">
+      <label class="control-label">
+        <span>View:</span>
+        <select id="viewFilter">
+          <option value="t0_t1_cap">Exclude T0 + T1 + Divine Cap</option>
+          <option value="t0_t1_nocap">Exclude T0 + T1, No Cap</option>
+          <option value="t0_only">Exclude T0 Only + Divine Cap</option>
+          <option value="unfiltered">Unfiltered (All Builds)</option>
+        </select>
+      </label>
+      <label class="control-label">
+        <span>Ascendancy:</span>
+        <select id="ascendancyFilter">
+          <option value="">All Ascendancies</option>
+        </select>
+      </label>
+      <label class="control-label">
+        <span>From:</span>
+        <select id="timeStart"></select>
+      </label>
+      <label class="control-label">
+        <span>To:</span>
+        <select id="timeEnd"></select>
+      </label>
+    </div>
+
+    <div class="skill-selector">
+      <label>Select skills to chart (click to toggle):</label>
+      <div class="skill-chips" id="skillChips"></div>
+    </div>
+    <div class="chart-container">
+      <canvas id="dpsChart"></canvas>
+    </div>
+
+    <div class="table-container">
+      <table id="skillTable">
+        <thead>
+          <tr>
+            <th data-sort="name">Skill <span class="arrow"></span></th>
+            <th data-sort="latestDps">Latest DPS <span class="arrow"></span></th>
+            <th data-sort="trend">Trend <span class="arrow"></span></th>
+            <th data-sort="dominant">Dominant Ascendancy <span class="arrow"></span></th>
+            <th>Top Uniques</th>
+          </tr>
+        </thead>
+        <tbody id="skillTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
