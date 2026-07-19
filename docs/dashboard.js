@@ -20,6 +20,7 @@ let selectedSkills = new Set();
 let selectedView = "t0_t1_cap";
 let _hoveredDs = -1;
 let sortColumn = "latestDps";
+let sortDir = "desc";
 
 function currentSkills() {
   return (state.views && state.views[selectedView] && state.views[selectedView].skills) || state.skills || {};
@@ -411,16 +412,25 @@ function renderTable() {
   const tbody = document.getElementById("skillTableBody");
   const skills = currentSkills();
   const fw = filteredWindows();
-  const latest = fw[fw.length - 1] || "";
-  const prev = fw.length > 1 ? fw[fw.length - 2] : "";
+
+  // Find the last window in range that has actual DPS data
+  let latest = "";
+  for (let i = fw.length - 1; i >= 0; i--) {
+    const w = fw[i];
+    for (const skill of Object.values(skills)) {
+      const d = skill.dps_over_time && skill.dps_over_time[w];
+      if (d && d > 0) {
+        latest = w;
+        break;
+      }
+    }
+    if (latest) break;
+  }
+  if (!latest) latest = fw[fw.length - 1] || "";
 
   // Compute row data
   let rows = Object.entries(skills).map(([name, data]) => {
     const latestDps = data.dps_over_time[latest] || 0;
-    const prevDps = data.dps_over_time[prev] || latestDps;
-    const trend = latestDps > prevDps * 1.02 ? "up"
-      : latestDps < prevDps * 0.98 ? "down" : "flat";
-
     const topAsc = data.top_ascendancy[latest] || "—";
 
     // Top 3 uniques for latest window
@@ -431,7 +441,7 @@ function renderTable() {
       .map(([itemName, d]) => `${escapeHtml(itemName)} ×${d.count}`)
       .join(", ");
 
-    return { name, latestDps, trend, topAsc, top3 };
+    return { name, latestDps, topAsc, top3 };
   });
 
   // Sort
@@ -440,26 +450,16 @@ function renderTable() {
     switch (sortColumn) {
       case "name": cmp = a.name.localeCompare(b.name); break;
       case "latestDps": cmp = a.latestDps - b.latestDps; break;
-      case "trend": {
-        const order = { up: 2, flat: 1, down: 0 };
-        cmp = (order[a.trend] || 0) - (order[b.trend] || 0);
-        break;
-      }
       case "dominant": cmp = a.topAsc.localeCompare(b.topAsc); break;
       default: cmp = a.latestDps - b.latestDps;
     }
     return sortDir === "asc" ? cmp : -cmp;
   });
 
-  // Trend indicators
-  const trendIcons = { up: "▲", down: "▼", flat: "─" };
-  const trendClasses = { up: "trend-up", down: "trend-down", flat: "trend-flat" };
-
   tbody.innerHTML = rows.map(r => `
     <tr>
       <td>${escapeHtml(r.name)}</td>
       <td>${fmtNum(r.latestDps)}</td>
-      <td class="${trendClasses[r.trend]}">${trendIcons[r.trend]} ${r.trend}</td>
       <td>${escapeHtml(r.topAsc)}</td>
       <td style="font-size:0.8rem;color:#6c7a8d">${r.top3 || "—"}</td>
     </tr>
