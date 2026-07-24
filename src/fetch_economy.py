@@ -1,14 +1,10 @@
 """
 fetch_economy.py — Builds economy price lookup from poe.ninja data dump.
 
-Downloads Keepers league dump (43MB ZIP), extracts daily price history for
+Downloads Mirage league dump (~53MB ZIP), extracts daily price history for
 unique items and Divine Orb. Builds a compact JSON lookup consumable by process.py.
 
-Since poe.ninja has no economy time-machine, the Keepers dump provides
-approximate time-matched pricing by mapping Mirage window labels to
-equivalent Keepers league day offsets.
-
-Source: GET /poe1/api/data/dumps/dump?name=Keepers
+Source: GET /poe1/api/data/dumps/dump?name=Mirage
 Output: data/economy.json
 """
 
@@ -20,11 +16,11 @@ import sys
 import zipfile
 import httpx
 
-DUMP_URL = "https://poe.ninja/poe1/api/data/dumps/dump?name=Keepers"
-ZIP_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "Keepers.zip")
+DUMP_URL = "https://poe.ninja/poe1/api/data/dumps/dump?name=Mirage"
+ZIP_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "Mirage.zip")
 OUTPUT_PATH = os.path.join(os.path.dirname(__file__), "..", "data", "economy.json")
 
-UNIQUE_TYPES = {"UniqueWeapon", "UniqueArmour", "UniqueAccessory", "UniqueFlask", "UniqueJewel", "UniqueMap"}
+UNIQUE_TYPES = {"UniqueWeapon", "UniqueArmour", "UniqueAccessory", "UniqueFlask", "UniqueJewel", "UniqueMap", "UniqueTincture"}
 
 # Map time-machine label to league day (day 1 = league start)
 def label_to_day(label: str) -> int:
@@ -64,14 +60,14 @@ def download_dump() -> str:
 
 
 def parse_items_csv(zf: zipfile.ZipFile) -> dict:
-    """Parse Keepers.items.csv into {item_name_lower: {day_offset: chaos_value}}.
+    """Parse Mirage.items.csv into {item_name_lower: {day_offset: chaos_value}}.
 
     For items with multiple variants/links, keeps the cheapest per day.
     """
     print("Parsing items CSV...")
     items: dict[str, dict[int, float]] = {}
 
-    with zf.open("Keepers.items.csv") as f:
+    with zf.open("Mirage.items.csv") as f:
         reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"), delimiter=";")
         count = 0
         for row in reader:
@@ -89,16 +85,15 @@ def parse_items_csv(zf: zipfile.ZipFile) -> dict:
             except ValueError:
                 continue
 
-            # Compute day offset from Keepers league start (2025-10-31)
+            # Compute day offset from Mirage league start (2026-03-06)
             try:
                 parts = date_str.split("-")
                 if len(parts) != 3:
                     continue
                 year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
-                # Keepers started 2025-10-31
                 from datetime import date
                 d = date(year, month, day)
-                league_start = date(2025, 10, 31)
+                league_start = date(2026, 3, 6)
                 day_offset = (d - league_start).days + 1  # day 1 = league start
                 if day_offset < 1:
                     continue
@@ -123,14 +118,14 @@ def parse_items_csv(zf: zipfile.ZipFile) -> dict:
 
 
 def parse_currency_csv(zf: zipfile.ZipFile) -> dict[int, float]:
-    """Parse Keepers.currency.csv to get Divine Orb chaos price per day.
+    """Parse Mirage.currency.csv to get Divine Orb chaos price per day.
 
     Returns {day_offset: divine_chaos_value}
     """
     print("Parsing currency CSV for Divine Orb...")
     divine: dict[int, float] = {}
 
-    with zf.open("Keepers.currency.csv") as f:
+    with zf.open("Mirage.currency.csv") as f:
         reader = csv.DictReader(io.TextIOWrapper(f, encoding="utf-8"), delimiter=";")
         for row in reader:
             get = row.get("Get", "")
@@ -149,7 +144,7 @@ def parse_currency_csv(zf: zipfile.ZipFile) -> dict[int, float]:
                 year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
                 from datetime import date
                 d = date(year, month, day)
-                league_start = date(2025, 10, 31)
+                league_start = date(2026, 3, 6)
                 day_offset = (d - league_start).days + 1  # day 1 = league start
                 if day_offset >= 1:
                     divine[day_offset] = value
@@ -161,7 +156,7 @@ def parse_currency_csv(zf: zipfile.ZipFile) -> dict[int, float]:
 
 
 def build_economy():
-    """Main entry point — builds economy.json from Keepers dump."""
+    """Main entry point — builds economy.json from Mirage dump."""
     zip_path = download_dump()
 
     with zipfile.ZipFile(zip_path, "r") as zf:
@@ -201,8 +196,8 @@ def build_economy():
             last_rate = divine_array[i]
 
     output = {
-        "source": "Keepers dump (historical)",
-        "league_start": "2025-10-31",
+        "source": "Mirage dump (actual)",
+        "league_start": "2026-03-06",
         "days": max_day + 1,
         "unique_item_count": len(item_arrays),
         "divine_rates": divine_array,
